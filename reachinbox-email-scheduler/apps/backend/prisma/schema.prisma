@@ -1,0 +1,124 @@
+// This is your Prisma schema file.
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User — created/updated on Google OAuth login
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  googleId  String   @unique
+  name      String
+  email     String   @unique
+  avatarUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  senders         Sender[]
+  emails          Email[]
+  slackConnection SlackConnection?
+
+  @@index([googleId])
+  @@index([email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sender — an Ethereal SMTP account owned by a user
+// Stores the Ethereal credentials so we can authenticate per-sender
+// ─────────────────────────────────────────────────────────────────────────────
+model Sender {
+  id               String   @id @default(cuid())
+  userId           String
+  email            String
+  etherealUser     String
+  etherealPassword String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emails Email[]
+
+  @@index([userId])
+  @@map("senders")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email — one record per recipient per scheduling batch
+// ─────────────────────────────────────────────────────────────────────────────
+model Email {
+  id             String      @id @default(cuid())
+  userId         String
+  senderId       String
+  recipient      String
+  subject        String
+  body           String      @db.Text
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  failedAt       DateTime?
+  status         EmailStatus @default(SCHEDULED)
+  bullJobId      String?
+  // idempotencyKey prevents duplicate sends across restarts/concurrent workers
+  // Composite: emailId is used as both idempotencyKey and BullMQ jobId
+  idempotencyKey String      @unique
+  errorMessage   String?     @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender Sender @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([senderId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([recipient])
+  @@index([idempotencyKey])
+  @@map("emails")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EmailStatus — mirrors BullMQ/processing states
+// ─────────────────────────────────────────────────────────────────────────────
+enum EmailStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SlackConnection — one per user, stores OAuth tokens
+// ─────────────────────────────────────────────────────────────────────────────
+model SlackConnection {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  teamId      String
+  accessToken String
+  teamName    String?
+  botUserId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([teamId])
+  @@map("slack_connections")
+}
