@@ -65,6 +65,7 @@ app.use(
     secret: env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       secure: env.NODE_ENV === 'production',
       httpOnly: true,
