@@ -14,7 +14,7 @@ services:
     region: oregon
     plan: free
     buildCommand: npm install --include=dev && npm run build:backend
-    startCommand: node apps/backend/dist/server.js
+    startCommand: npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma && npm run start --workspace=apps/backend
     envVars:
       - key: NODE_ENV
         value: production

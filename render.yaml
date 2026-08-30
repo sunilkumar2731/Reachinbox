@@ -14,7 +14,7 @@ services:
     region: oregon
     plan: free
     buildCommand: cd reachinbox-email-scheduler && npm install --include=dev && npm run build:backend
-    startCommand: cd reachinbox-email-scheduler && node apps/backend/dist/server.js
+    startCommand: cd reachinbox-email-scheduler && npx prisma migrate deploy --schema=apps/backend/prisma/schema.prisma && npm run start --workspace=apps/backend
     envVars:
       - key: NODE_ENV
         value: production
