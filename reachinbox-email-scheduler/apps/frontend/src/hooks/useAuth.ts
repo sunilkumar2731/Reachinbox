@@ -13,6 +13,24 @@ export function useAuth() {
     retry: false,
   });
 
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      authApi.login(email, password),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['auth', 'me'], data);
+      navigate('/dashboard');
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
+      authApi.register(email, password, name),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['auth', 'me'], data);
+      navigate('/dashboard');
+    },
+  });
+
   const devLoginMutation = useMutation({
     mutationFn: ({ email, name }: { email?: string; name?: string }) =>
       authApi.devLogin(email, name),
@@ -36,9 +54,14 @@ export function useAuth() {
     isAuthenticated: !!user,
     isLoading,
     isError,
+    login: loginMutation.mutateAsync,
+    isLoggingIn: loginMutation.isPending,
+    register: registerMutation.mutateAsync,
+    isRegistering: registerMutation.isPending,
     devLogin: devLoginMutation.mutateAsync,
     isDevLoggingIn: devLoginMutation.isPending,
     logout: logoutMutation.mutateAsync,
     isLoggingOut: logoutMutation.isPending,
   };
 }
+

@@ -3,19 +3,65 @@ import passport from 'passport';
 import { env } from '../config/env';
 import { prisma } from '../config/prisma';
 import { memoryStore } from '../services/memoryStore';
+import { AuthService } from '../services/authService';
 
 export class AuthController {
+  /**
+   * Register a new user with Email + Password
+   */
+  static async register(req: Request, res: Response): Promise<void> {
+    const { email, password, name } = req.body || {};
+    const user = await AuthService.registerUser(email, password, name);
+
+    req.logIn(user, (err) => {
+      if (err) {
+        res.status(500).json({ success: false, error: { message: 'Registration session error' } });
+        return;
+      }
+      res.status(201).json({
+        success: true,
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          createdAt: user.createdAt,
+        },
+      });
+    });
+  }
+
+  /**
+   * Log in an existing user with Email + Password
+   */
+  static async login(req: Request, res: Response): Promise<void> {
+    const { email, password } = req.body || {};
+    const user = await AuthService.loginUser(email, password);
+
+    req.logIn(user, (err) => {
+      if (err) {
+        res.status(500).json({ success: false, error: { message: 'Login session error' } });
+        return;
+      }
+      res.json({
+        success: true,
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          createdAt: user.createdAt,
+        },
+      });
+    });
+  }
+
   /**
    * Initiate Google OAuth flow
    */
   static googleLogin(req: Request, res: Response, next: NextFunction): void {
-    if (!env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID === 'REPLACE_ME') {
-      res.status(400).json({
-        success: false,
-        error: {
-          message: 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env',
-        },
-      });
+    if (!env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID === 'REPLACE_ME' || env.GOOGLE_CLIENT_ID === 'your-google-client-id') {
+      res.redirect(`${env.FRONTEND_URL}/login?error=google_oauth_not_configured`);
       return;
     }
 
@@ -24,6 +70,7 @@ export class AuthController {
       prompt: 'select_account',
     })(req, res, next);
   }
+
 
   /**
    * Google OAuth Callback

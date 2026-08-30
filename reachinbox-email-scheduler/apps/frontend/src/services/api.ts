@@ -2,12 +2,13 @@ import axios from 'axios';
 import { Email, ScheduleEmailPayload, ScheduleResponse, Sender, SlackStatus, User } from '../types';
 
 export const api = axios.create({
-  baseURL: '', // Vite proxy forwards /api to backend
+  baseURL: import.meta.env.VITE_API_URL || '', // Uses VITE_API_URL in production, or Vite proxy in dev
   withCredentials: true, // Send session cookies
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 
 export const authApi = {
   getMe: async (): Promise<User | null> => {
@@ -18,6 +19,14 @@ export const authApi = {
       return null;
     }
   },
+  login: async (email: string, password: string): Promise<User> => {
+    const res = await api.post<{ success: boolean; data: User }>('/api/auth/login', { email, password });
+    return res.data.data;
+  },
+  register: async (email: string, password: string, name: string): Promise<User> => {
+    const res = await api.post<{ success: boolean; data: User }>('/api/auth/register', { email, password, name });
+    return res.data.data;
+  },
   devLogin: async (email?: string, name?: string): Promise<User> => {
     const res = await api.post<{ success: boolean; data: User }>('/api/auth/dev-login', { email, name });
     return res.data.data;
@@ -26,6 +35,7 @@ export const authApi = {
     await api.post('/api/auth/logout');
   },
 };
+
 
 export const emailApi = {
   schedule: async (payload: ScheduleEmailPayload): Promise<ScheduleResponse> => {

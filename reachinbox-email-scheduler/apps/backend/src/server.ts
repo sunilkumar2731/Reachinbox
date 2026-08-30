@@ -56,6 +56,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Enable trust proxy for Render / Cloud deployment SSL termination
+app.set('trust proxy', 1);
+
 // ─── Session middleware ───────────────────────────────────────────────────────
 app.use(
   session({
@@ -66,10 +69,11 @@ app.use(
       secure: env.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
-      sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
     },
   })
 );
+
 
 // ─── Passport Authentication ──────────────────────────────────────────────────
 configurePassport();

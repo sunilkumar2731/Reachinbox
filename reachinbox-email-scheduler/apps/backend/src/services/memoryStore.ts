@@ -26,6 +26,7 @@ class MemoryStore {
     const defaultUser: User = {
       id: 'dev_user_mock',
       googleId: 'dev_demo_reachinbox_ai',
+      passwordHash: null,
       email: 'demo@reachinbox.ai',
       name: 'Sarah Jenkins',
       avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=demo%40reachinbox.ai',
@@ -76,14 +77,37 @@ class MemoryStore {
     return this.users.get(id);
   }
 
+  getUserByEmail(email: string): User | undefined {
+    const cleaned = (email || '').trim().toLowerCase();
+    return Array.from(this.users.values()).find((u) => u.email.toLowerCase() === cleaned);
+  }
+
+  createUserWithPassword(email: string, passwordHash: string, name: string): User {
+    const cleanedEmail = email.trim().toLowerCase();
+    const user: User = {
+      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      googleId: null,
+      passwordHash,
+      email: cleanedEmail,
+      name,
+      avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanedEmail)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(user.id, user);
+    this.users.set(user.email, user);
+    return user;
+  }
+
   getOrCreateDevUser(testEmail = 'demo@reachinbox.ai', testName = 'Sarah Jenkins'): User {
-    const existing = Array.from(this.users.values()).find((u) => u.email === testEmail);
+    const existing = this.getUserByEmail(testEmail);
     if (existing) return existing;
 
     const googleId = `dev_${testEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const user: User = {
       id: `dev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       googleId,
+      passwordHash: null,
       email: testEmail,
       name: testName,
       avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(testEmail)}`,
@@ -100,6 +124,7 @@ class MemoryStore {
     this.users.set(user.id, user);
     if (user.email) this.users.set(user.email, user);
   }
+
 
   // ── Sender Methods ───────────────────────────────────────────────────────────
   getOrCreateSender(userId: string, senderId?: string): Sender {

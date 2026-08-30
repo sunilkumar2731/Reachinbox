@@ -14,14 +14,16 @@ datasource db {
 // User — created/updated on Google OAuth login
 // ─────────────────────────────────────────────────────────────────────────────
 model User {
-  id        String   @id @default(cuid())
-  googleId  String   @unique
-  name      String
-  email     String   @unique
-  avatarUrl String?
+  id           String   @id @default(cuid())
+  googleId     String?  @unique
+  passwordHash String?
+  name         String
+  email        String   @unique
+  avatarUrl    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
 
   // Relations
   senders         Sender[]

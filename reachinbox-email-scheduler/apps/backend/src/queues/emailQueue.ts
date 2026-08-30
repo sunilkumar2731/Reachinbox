@@ -5,6 +5,7 @@ import { EmailJobData } from '../types';
 export const EMAIL_QUEUE_NAME = 'email-queue';
 
 const redisConnection = createBullMQRedisConnection();
+redisConnection.on('error', () => {});
 
 const defaultQueueOptions: QueueOptions = {
   connection: redisConnection,

@@ -2,12 +2,12 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { prisma } from './prisma';
 import { env } from './env';
-
+import { AuthService } from '../services/authService';
 import { memoryStore, isDbConnectionError } from '../services/memoryStore';
 
 export function configurePassport(): void {
   // Only register real Google strategy if configured, or with placeholder
-  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_ID !== 'REPLACE_ME') {
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_ID !== 'REPLACE_ME' && env.GOOGLE_CLIENT_ID !== 'your-google-client-id') {
     passport.use(
       new GoogleStrategy(
         {
@@ -26,31 +26,14 @@ export function configurePassport(): void {
               return done(new Error('No email found in Google profile'));
             }
 
-            try {
-              // Upsert user in PostgreSQL
-              const user = await prisma.user.upsert({
-                where: { googleId },
-                update: {
-                  name,
-                  email,
-                  avatarUrl,
-                },
-                create: {
-                  googleId,
-                  name,
-                  email,
-                  avatarUrl,
-                },
-              });
-              memoryStore.saveUser(user);
-              return done(null, user);
-            } catch (dbErr) {
-              if (isDbConnectionError(dbErr)) {
-                const fallbackUser = memoryStore.getOrCreateDevUser(email, name);
-                return done(null, fallbackUser);
-              }
-              throw dbErr;
-            }
+            const user = await AuthService.findOrCreateGoogleUser(
+              googleId,
+              email,
+              name,
+              avatarUrl
+            );
+
+            return done(null, user);
           } catch (err) {
             return done(err as Error);
           }
@@ -58,6 +41,7 @@ export function configurePassport(): void {
       )
     );
   }
+
 
   passport.serializeUser((user: any, done) => {
     done(null, user.id);

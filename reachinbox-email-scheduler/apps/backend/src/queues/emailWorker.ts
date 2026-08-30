@@ -251,8 +251,11 @@ export function startEmailWorker(): Worker<EmailJobData> {
   });
 
   worker.on('error', (err: Error) => {
-    console.error(`[BullMQ Worker] Worker error: ${err.message}`);
+    if (!err.message.includes('ECONNREFUSED')) {
+      console.error(`[BullMQ Worker] Worker error: ${err.message}`);
+    }
   });
+
 
   return worker;
 }
