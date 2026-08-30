@@ -39,12 +39,17 @@ const envSchema = z.object({
   ETHEREAL_USER: z.string().optional(),
   ETHEREAL_PASSWORD: z.string().optional(),
 
-  // Real SMTP Server Credentials (for sending real emails to Gmail/Outlook/Custom SMTP)
+  // Resend HTTPS Email API (Production delivery)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional().default('onboarding@resend.dev'),
+
+  // Real SMTP Server Credentials (for local dev / Gmail / Ethereal)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_SECURE: z.string().optional(),
+
 
   // Session
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),

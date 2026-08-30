@@ -117,49 +117,62 @@ export async function processEmailJob(job: Job<EmailJobData>): Promise<{ success
   // 5. Provider Minimum Delay Enforcement
   await DelayService.enforceMinDelay(email.senderId);
 
-  // 6. Send Email through SMTP (Gmail / Custom / Ethereal)
+  // 6. Send Email through Resend HTTPS API (or Nodemailer SMTP fallback)
   try {
-    let info: any;
+    let messageId = '';
     let previewUrl: string | false = false;
-    let deliveryNote = '';
 
-    try {
-      const senderAddress = env.SMTP_USER || email.sender.email;
-      const transporter = SenderService.getTransporter(email.sender);
-      info = await transporter.sendMail({
-        from: `"${email.sender.email || 'ReachInbox Scheduler'}" <${senderAddress}>`,
+    const resendApiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
+
+    if (resendApiKey) {
+      // 🚀 Production Resend HTTPS API Delivery (Port 443 — bypasses Render outbound SMTP restrictions)
+      const { sendEmailViaResend } = await import('../services/resendService');
+      const resendResult = await sendEmailViaResend({
         to: email.recipient,
         subject: email.subject,
         text: email.body,
-        html: `<div>${email.body.replace(/\n/g, '<br/>')}</div>`,
+        from: env.EMAIL_FROM || process.env.EMAIL_FROM || 'onboarding@resend.dev',
       });
-      previewUrl = nodemailer.getTestMessageUrl(info);
-      console.log(`[Worker] ✅ Real Email ${emailId} SENT via SMTP (${senderAddress}) to ${email.recipient}`);
-      if (previewUrl) {
-        console.log(`[Worker] 📬 Ethereal Preview URL: ${previewUrl}`);
-      }
-    } catch (smtpErr: any) {
-      const rawErrorMsg = smtpErr?.message || String(smtpErr);
-      console.warn(`[Worker] ⚠️ Primary SMTP failed for ${email.recipient}: ${rawErrorMsg}`);
-
-      // If Gmail returned 535 Invalid login (Authentication failed),
-      // fallback to Ethereal Sandbox so email delivery completes cleanly
+      messageId = resendResult.id;
+      console.log(`[Worker] ✅ Real Email ${emailId} SENT via Resend HTTPS API (ID: ${messageId}) to ${email.recipient}`);
+    } else {
+      // Nodemailer SMTP fallback (for local dev / sandbox)
       try {
-        const fallbackTransporter = SenderService.getEtherealFallbackTransporter(email.sender);
-        info = await fallbackTransporter.sendMail({
-          from: `"ReachInbox Sandbox" <${email.sender.etherealUser}>`,
+        const senderAddress = env.SMTP_USER || email.sender.email;
+        const transporter = SenderService.getTransporter(email.sender);
+        const info = await transporter.sendMail({
+          from: `"${email.sender.email || 'ReachInbox Scheduler'}" <${senderAddress}>`,
           to: email.recipient,
           subject: email.subject,
           text: email.body,
           html: `<div>${email.body.replace(/\n/g, '<br/>')}</div>`,
         });
-        previewUrl = nodemailer.getTestMessageUrl(info) || `https://ethereal.email/message/${info.messageId}`;
-        console.log(`[Worker] 📬 Ethereal Sandbox Fallback SENT to ${email.recipient}. Preview: ${previewUrl}`);
-      } catch (fallbackErr) {
-        console.error(`[Worker] ❌ Fallback send failed:`, (fallbackErr as Error).message);
-        throw smtpErr;
+        messageId = info.messageId;
+        previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(`[Worker] ✅ Email ${emailId} SENT via SMTP (${senderAddress}) to ${email.recipient}`);
+      } catch (smtpErr: any) {
+        const rawErrorMsg = smtpErr?.message || String(smtpErr);
+        console.warn(`[Worker] ⚠️ Primary SMTP failed for ${email.recipient}: ${rawErrorMsg}`);
+
+        try {
+          const fallbackTransporter = SenderService.getEtherealFallbackTransporter(email.sender);
+          const info = await fallbackTransporter.sendMail({
+            from: `"ReachInbox Sandbox" <${email.sender.etherealUser}>`,
+            to: email.recipient,
+            subject: email.subject,
+            text: email.body,
+            html: `<div>${email.body.replace(/\n/g, '<br/>')}</div>`,
+          });
+          messageId = info.messageId;
+          previewUrl = nodemailer.getTestMessageUrl(info) || `https://ethereal.email/message/${info.messageId}`;
+          console.log(`[Worker] 📬 Ethereal Sandbox Fallback SENT to ${email.recipient}. Preview: ${previewUrl}`);
+        } catch (fallbackErr) {
+          console.error(`[Worker] ❌ Fallback send failed:`, (fallbackErr as Error).message);
+          throw smtpErr;
+        }
       }
     }
+
 
     // 7. Update PostgreSQL / MemoryStore to SENT
     const sentAt = new Date();
@@ -185,9 +198,10 @@ export async function processEmailJob(job: Job<EmailJobData>): Promise<{ success
 
     return {
       success: true,
-      messageId: info.messageId,
+      messageId,
       previewUrl,
     };
+
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`[Worker] ❌ Failed to send email ${emailId}:`, errorMsg);
