@@ -106,9 +106,10 @@ export class SenderService {
         orderBy: { createdAt: 'desc' },
       });
       if (senders.length > 0) {
-        senders.forEach((s) => memoryStore.saveSender(s));
+        senders.forEach((s: Sender) => memoryStore.saveSender(s));
         return senders;
       }
+
     } catch (err) {
       if (!isDbConnectionError(err)) throw err;
       console.warn('[SenderService] PostgreSQL connection issue, fetching senders from memoryStore');
