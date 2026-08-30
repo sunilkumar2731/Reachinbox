@@ -9,27 +9,30 @@ const globalForRedis = globalThis as unknown as {
 export let isRedisConnected = false;
 
 function createRedisConnection(name: string): Redis {
-  const client = new Redis({
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD,
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    enableOfflineQueue: false, // Prevents hanging requests when Redis is offline
-    retryStrategy: (times) => {
-      // Exponential backoff: 50ms, 100ms, 200ms … capped at 2s
-      return Math.min(times * 50, 2000);
-    },
-    lazyConnect: false,
-  });
+  const connectionUrl = process.env.REDIS_URL;
+  const client = connectionUrl
+    ? new Redis(connectionUrl, {
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+        enableOfflineQueue: false,
+        retryStrategy: (times) => Math.min(times * 50, 2000),
+      })
+    : new Redis({
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD || undefined,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+        enableOfflineQueue: false,
+        retryStrategy: (times) => Math.min(times * 50, 2000),
+      });
 
   client.on('connect', () => {
     isRedisConnected = true;
     console.log(`[Redis:${name}] Connected successfully`);
   });
-  client.on('error', (err) => {
+  client.on('error', () => {
     isRedisConnected = false;
-    // Log once or sparingly without flooding
   });
   client.on('close', () => {
     isRedisConnected = false;
@@ -51,16 +54,26 @@ if (env.NODE_ENV !== 'production') {
  * because of how ioredis handles blocking commands.
  */
 export function createBullMQRedisConnection(): Redis {
+  const connectionUrl = process.env.REDIS_URL;
+  if (connectionUrl) {
+    return new Redis(connectionUrl, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      enableOfflineQueue: false,
+      retryStrategy: (times) => Math.min(times * 50, 1000),
+    });
+  }
   return new Redis({
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD,
+    password: env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
-    enableOfflineQueue: false, // Prevents hanging requests when Redis is offline
+    enableOfflineQueue: false,
     retryStrategy: (times) => Math.min(times * 50, 1000),
   });
 }
+
 
 // Graceful shutdown
 process.on('beforeExit', async () => {

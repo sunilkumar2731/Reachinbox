@@ -18,21 +18,11 @@ services:
         fromDatabase:
           name: reachinbox-db
           property: connectionString
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           type: redis
           name: reachinbox-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: reachinbox-redis
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          type: redis
-          name: reachinbox-redis
-          property: password
+          property: connectionString
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -65,21 +55,11 @@ services:
         fromDatabase:
           name: reachinbox-db
           property: connectionString
-      - key: REDIS_HOST
+      - key: REDIS_URL
         fromService:
           type: redis
           name: reachinbox-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: reachinbox-redis
-          property: port
-      - key: REDIS_PASSWORD
-        fromService:
-          type: redis
-          name: reachinbox-redis
-          property: password
+          property: connectionString
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
