@@ -96,9 +96,10 @@ app.use('/api/senders', sendersRouter);
 app.use('/api/slack', slackRouter);
 
 // ─── 404 handler ──────────────────────────────────────────────────────────────
-app.use((_req, res) => {
+app.use((_req: express.Request, res: express.Response) => {
   res.status(404).json({ success: false, error: { message: 'Route not found' } });
 });
+
 
 // ─── Centralized error handler (must be last) ─────────────────────────────────
 app.use(errorHandler);
