@@ -1,4 +1,11 @@
 services:
+  # ── Redis Service ─────────────────────────────────────────────────────────
+  - type: redis
+    name: reachinbox-redis
+    region: oregon
+    plan: free
+    maxmemoryPolicy: noeviction
+
   # ── Backend Web API Service ────────────────────────────────────────────────
   - type: web
     name: reachinbox-backend
