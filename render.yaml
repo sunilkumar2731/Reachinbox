@@ -5,6 +5,7 @@ services:
     region: oregon
     plan: free
     maxmemoryPolicy: noeviction
+    ipAllowList: []
 
   # ── Backend Web API Service ────────────────────────────────────────────────
   - type: web
