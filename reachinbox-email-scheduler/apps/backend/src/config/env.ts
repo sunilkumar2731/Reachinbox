@@ -29,10 +29,11 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1, 'GOOGLE_CLIENT_SECRET is required'),
   GOOGLE_CALLBACK_URL: z.string().url(),
 
-  // Slack OAuth
-  SLACK_CLIENT_ID: z.string().min(1, 'SLACK_CLIENT_ID is required'),
-  SLACK_CLIENT_SECRET: z.string().min(1, 'SLACK_CLIENT_SECRET is required'),
-  SLACK_REDIRECT_URI: z.string().url(),
+  // Slack OAuth (optional)
+  SLACK_CLIENT_ID: z.string().optional().default('dummy_slack_client_id'),
+  SLACK_CLIENT_SECRET: z.string().optional().default('dummy_slack_client_secret'),
+  SLACK_REDIRECT_URI: z.string().optional().default('http://localhost:4000/api/slack/callback'),
+
 
   // Ethereal fallback (individual senders have their own credentials)
   ETHEREAL_USER: z.string().optional(),
